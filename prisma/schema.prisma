@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  tier         String     @default("FREE")
+  jobs         Job[]
+  quotaLogs    QuotaLog[]
+  createdAt    DateTime   @default(now())
+}
+
+model Job {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  prompt             String    @db.Text
+  modelImageBase64   String    @db.Text
+  modelImageMime     String
+  topImageBase64     String    @db.Text
+  topImageMime       String
+  bottomImageBase64  String    @db.Text
+  bottomImageMime    String
+  modelProvider      String    @default("gemini")
+  modelName     String    @default("gemini-2.5-flash-image")
+  status        String    @default("QUEUED")
+  errorCode     String?
+  errorMessage  String?   @db.Text
+  outputBase64  String?   @db.Text
+  outputMime    String?
+  tokensUsed    Int?
+  durationMs    Int?
+  createdAt     DateTime  @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+  expiresAt     DateTime
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([expiresAt])
+}
+
+model QuotaLog {
+  id     String   @id @default(cuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id])
+  date   DateTime @db.Date
+  count  Int      @default(0)
+
+  @@unique([userId, date])
+}
