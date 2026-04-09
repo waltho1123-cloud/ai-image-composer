@@ -1,5 +1,5 @@
 #!/bin/sh
 echo "Running database migrations..."
-npx prisma migrate deploy 2>&1 || echo "Migration warning (may be OK on first run)"
+npx prisma migrate deploy 2>&1 || echo "Migration skipped"
 echo "Starting Next.js server..."
-exec node server.js
+exec npx next start -p ${PORT:-3000} -H ${HOSTNAME:-0.0.0.0}
