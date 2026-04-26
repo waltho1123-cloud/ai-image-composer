@@ -28,8 +28,11 @@ model Job {
   topImageMime       String
   bottomImageBase64  String    @db.Text
   bottomImageMime    String
-  modelProvider      String    @default("gemini")
-  modelName     String    @default("gemini-2.5-flash-image")
+  modelProvider      String    @default("openai")
+  modelName     String    @default("gpt-image-2")
+  outputSize    String    @default("auto")
+  outputQuality String    @default("auto")
+  outputFormat  String    @default("png")
   status        String    @default("QUEUED")
   errorCode     String?
   errorMessage  String?   @db.Text

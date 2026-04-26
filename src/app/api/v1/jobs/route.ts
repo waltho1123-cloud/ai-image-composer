@@ -22,6 +22,16 @@ export async function POST(request: NextRequest) {
     const topImage = formData.get('topImage') as File | null;
     const bottomImage = formData.get('bottomImage') as File | null;
     const prompt = formData.get('prompt') as string | null;
+    const outputSizeRaw = (formData.get('outputSize') as string | null) ?? 'auto';
+    const outputQualityRaw = (formData.get('outputQuality') as string | null) ?? 'auto';
+    const outputFormatRaw = (formData.get('outputFormat') as string | null) ?? 'png';
+
+    const ALLOWED_SIZES = ['auto', '2048x2048', '2048x1152', '3840x2160', '2160x3840'];
+    const ALLOWED_QUALITY = ['auto', 'low', 'medium', 'high'];
+    const ALLOWED_FORMAT = ['png', 'jpeg', 'webp'];
+    const outputSize = ALLOWED_SIZES.includes(outputSizeRaw) ? outputSizeRaw : 'auto';
+    const outputQuality = ALLOWED_QUALITY.includes(outputQualityRaw) ? outputQualityRaw : 'auto';
+    const outputFormat = ALLOWED_FORMAT.includes(outputFormatRaw) ? outputFormatRaw : 'png';
 
     if (!modelImage || !topImage || !bottomImage || !prompt) {
       return Response.json(
@@ -86,6 +96,9 @@ export async function POST(request: NextRequest) {
           topImageMime: topImage.type,
           bottomImageBase64,
           bottomImageMime: bottomImage.type,
+          outputSize,
+          outputQuality,
+          outputFormat,
           status: 'QUEUED',
           expiresAt,
         },

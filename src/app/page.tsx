@@ -24,6 +24,9 @@ export default function HomePage() {
   const [topImage, setTopImage] = useState<File | null>(null);
   const [bottomImage, setBottomImage] = useState<File | null>(null);
   const [prompt, setPrompt] = useState('');
+  const [outputSize, setOutputSize] = useState<'auto' | '2048x2048' | '2048x1152' | '3840x2160' | '2160x3840'>('auto');
+  const [outputQuality, setOutputQuality] = useState<'auto' | 'low' | 'medium' | 'high'>('auto');
+  const [outputFormat, setOutputFormat] = useState<'png' | 'jpeg' | 'webp'>('png');
   const [jobId, setJobId] = useState<string | null>(null);
   const [completedJobId, setCompletedJobId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -82,6 +85,9 @@ export default function HomePage() {
       formData.append('topImage', topImage);
       formData.append('bottomImage', bottomImage);
       formData.append('prompt', prompt);
+      formData.append('outputSize', outputSize);
+      formData.append('outputQuality', outputQuality);
+      formData.append('outputFormat', outputFormat);
 
       const res = await fetch('/api/v1/jobs', {
         method: 'POST',
@@ -101,7 +107,7 @@ export default function HomePage() {
     } finally {
       setSubmitting(false);
     }
-  }, [modelImage, topImage, bottomImage, prompt]);
+  }, [modelImage, topImage, bottomImage, prompt, outputSize, outputQuality, outputFormat]);
 
   const handleComplete = useCallback((completedId: string) => {
     setCompletedJobId(completedId);
@@ -253,6 +259,52 @@ export default function HomePage() {
                   onChange={setPrompt}
                   disabled={isProcessing}
                 />
+
+                {/* Output options */}
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <label className="flex flex-col gap-1.5 text-xs text-[#94a3b8]">
+                    輸出尺寸
+                    <select
+                      value={outputSize}
+                      onChange={(e) => setOutputSize(e.target.value as typeof outputSize)}
+                      disabled={isProcessing}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#e2e8f0] focus:border-[#6366f1] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="auto">自動</option>
+                      <option value="2048x2048">2048×2048（2K 平方）</option>
+                      <option value="2048x1152">2048×1152（2K 橫屏）</option>
+                      <option value="3840x2160">3840×2160（4K 橫屏）</option>
+                      <option value="2160x3840">2160×3840（4K 垂直螢幕）</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-xs text-[#94a3b8]">
+                    輸出品質
+                    <select
+                      value={outputQuality}
+                      onChange={(e) => setOutputQuality(e.target.value as typeof outputQuality)}
+                      disabled={isProcessing}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#e2e8f0] focus:border-[#6366f1] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="auto">自動</option>
+                      <option value="low">低（快速、省錢）</option>
+                      <option value="medium">中</option>
+                      <option value="high">高（最佳細節）</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5 text-xs text-[#94a3b8]">
+                    輸出格式
+                    <select
+                      value={outputFormat}
+                      onChange={(e) => setOutputFormat(e.target.value as typeof outputFormat)}
+                      disabled={isProcessing}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#e2e8f0] focus:border-[#6366f1] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="png">PNG（無損）</option>
+                      <option value="jpeg">JPEG（檔案小）</option>
+                      <option value="webp">WebP</option>
+                    </select>
+                  </label>
+                </div>
 
                 {/* Submit error */}
                 {submitError && (

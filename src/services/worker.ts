@@ -1,16 +1,16 @@
 import { prisma } from '@/lib/prisma';
-import { GeminiProvider } from '@/services/providers/gemini';
+import { OpenAIProvider } from '@/services/providers/openai';
 import type { Job } from '@/generated/prisma/client';
 
 const POLL_INTERVAL_MS = 2000;
 const CONCURRENCY = 3; // Phase 1 parallelism
 const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes (GD-06)
-const MAX_OUTPUT_SIZE = 15 * 1024 * 1024; // 15MB (GD-05)
+const MAX_OUTPUT_SIZE = 50 * 1024 * 1024; // 50MB — accommodates 4K PNG outputs
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
 let isRunning = false;
 
-const provider = new GeminiProvider();
+const provider = new OpenAIProvider();
 
 /**
  * Claim one QUEUED job using SELECT ... FOR UPDATE SKIP LOCKED,
@@ -45,6 +45,9 @@ async function processJob(job: Job): Promise<void> {
       topImage: { base64: job.topImageBase64, mime: job.topImageMime },
       bottomImage: { base64: job.bottomImageBase64, mime: job.bottomImageMime },
       prompt: job.prompt,
+      size: job.outputSize as 'auto' | '2048x2048' | '2048x1152' | '3840x2160' | '2160x3840',
+      quality: job.outputQuality as 'auto' | 'low' | 'medium' | 'high',
+      format: job.outputFormat as 'png' | 'jpeg' | 'webp',
     });
 
     // Check output size (GD-05)
