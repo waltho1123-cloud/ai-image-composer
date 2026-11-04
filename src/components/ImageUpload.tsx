@@ -28,12 +28,22 @@ export default function ImageUpload({ onImageSelect, selectedFile, disabled, lab
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  // selectedFile 被重設為 null（父層重設或使用者移除檔案）時，清掉預覽、檔名、大小與錯誤訊息。
+  // 在 render 階段比對前一個 selectedFile 再調整 state，而不是在 effect 裡同步 setState。
+  const [prevSelectedFile, setPrevSelectedFile] = useState(selectedFile);
+  if (prevSelectedFile !== selectedFile) {
+    setPrevSelectedFile(selectedFile);
     if (selectedFile === null || selectedFile === undefined) {
       setPreview(null);
       setFileName(null);
       setFileSize(0);
       setError(null);
+    }
+  }
+
+  // <input> 的 value 是 DOM 狀態，不能在 render 階段改，仍然放在 effect 內
+  useEffect(() => {
+    if (selectedFile === null || selectedFile === undefined) {
       if (inputRef.current) inputRef.current.value = '';
     }
   }, [selectedFile]);

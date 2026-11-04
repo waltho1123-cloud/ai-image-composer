@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 
 interface ResultViewerProps {
   jobId: string | null;
@@ -14,73 +14,79 @@ interface ResultData {
   expiresAt: string;
 }
 
+// 把到期時間換算成倒數文字；沒有到期時間回傳空字串
+function formatCountdown(expiresAt: string | undefined): string {
+  if (!expiresAt) return '';
+
+  const now = Date.now();
+  const expires = new Date(expiresAt).getTime();
+  const diff = expires - now;
+
+  if (diff <= 0) return '已過期';
+
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  if (hours > 0) return `${hours} 小時 ${minutes} 分鐘後過期`;
+  if (minutes > 0) return `${minutes} 分 ${seconds} 秒後過期`;
+  return `${seconds} 秒後過期`;
+}
+
 export default function ResultViewer({ jobId, onReset }: ResultViewerProps) {
   const [result, setResult] = useState<ResultData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<string>('');
 
-  const fetchResult = useCallback(async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/v1/jobs/${id}/result`, {
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error?.message || '無法載入結果');
-      }
-      const data: ResultData = await res.json();
-      setResult(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '無法載入結果');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
+  // jobId 改變時（含第一次帶入 jobId）進入載入中並清掉舊錯誤；jobId 變成 null 則清掉結果、倒數與錯誤。
+  // 在 render 階段比對前一個 jobId 再調整 state，而不是在 effect 裡同步 setState。
+  const [prevJobId, setPrevJobId] = useState<string | null>(null);
+  if (prevJobId !== jobId) {
+    setPrevJobId(jobId);
     if (jobId) {
-      fetchResult(jobId);
+      setLoading(true);
+      setError(null);
     } else {
       setResult(null);
+      setCountdown('');
       setError(null);
     }
-  }, [jobId, fetchResult]);
+  }
 
-  // Countdown timer for expiration
+  // 取得結果：fetch 寫在 effect 內，await 之後才 setState（effect 本體不會同步 setState）
   useEffect(() => {
-    if (!result?.expiresAt) {
-      setCountdown('');
-      return;
-    }
+    if (!jobId) return;
 
-    function updateCountdown() {
-      const now = Date.now();
-      const expires = new Date(result!.expiresAt).getTime();
-      const diff = expires - now;
-
-      if (diff <= 0) {
-        setCountdown('已過期');
-        return;
-      }
-
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-      if (hours > 0) {
-        setCountdown(`${hours} 小時 ${minutes} 分鐘後過期`);
-      } else if (minutes > 0) {
-        setCountdown(`${minutes} 分 ${seconds} 秒後過期`);
-      } else {
-        setCountdown(`${seconds} 秒後過期`);
+    async function fetchResult(id: string) {
+      try {
+        const res = await fetch(`/api/v1/jobs/${id}/result`, {
+          credentials: 'include',
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error?.message || '無法載入結果');
+        }
+        const data: ResultData = await res.json();
+        setResult(data);
+        // 第一次倒數文字與結果同一批更新；之後每秒由下面的 interval 更新
+        setCountdown(formatCountdown(data.expiresAt));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '無法載入結果');
+      } finally {
+        setLoading(false);
       }
     }
 
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
+    fetchResult(jobId);
+  }, [jobId]);
+
+  // Countdown timer for expiration（setState 在 interval 回呼內，不在 effect 本體）
+  useEffect(() => {
+    if (!result?.expiresAt) return;
+
+    const expiresAt = result.expiresAt;
+    const interval = setInterval(() => setCountdown(formatCountdown(expiresAt)), 1000);
     return () => clearInterval(interval);
   }, [result]);
 

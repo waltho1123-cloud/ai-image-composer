@@ -12,22 +12,22 @@ export default function QuotaDisplay() {
   const [quota, setQuota] = useState<QuotaData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // fetch 寫在 effect 內並先宣告再呼叫；await 之後才 setState（effect 本體不會同步 setState）
   useEffect(() => {
+    async function fetchQuota() {
+      try {
+        const res = await fetch('/api/v1/quota', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to fetch quota');
+        const data: QuotaData = await res.json();
+        setQuota(data);
+      } catch {
+        setQuota(null);
+      } finally {
+        setLoading(false);
+      }
+    }
     fetchQuota();
   }, []);
-
-  async function fetchQuota() {
-    try {
-      const res = await fetch('/api/v1/quota', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch quota');
-      const data: QuotaData = await res.json();
-      setQuota(data);
-    } catch {
-      setQuota(null);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   if (loading) {
     return (

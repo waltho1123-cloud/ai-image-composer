@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 
 interface HistoryListProps {
   onSelectJob: (jobId: string) => void;
@@ -41,22 +41,22 @@ export default function HistoryList({ onSelectJob }: HistoryListProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchJobs = useCallback(async () => {
-    try {
-      const res = await fetch('/api/v1/jobs', { credentials: 'include' });
-      if (!res.ok) throw new Error('無法載入歷史紀錄');
-      const data = await res.json();
-      setJobs(data.jobs || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '載入失敗');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // fetch 寫在 effect 內，await 之後才 setState（effect 本體不會同步 setState）
   useEffect(() => {
+    async function fetchJobs() {
+      try {
+        const res = await fetch('/api/v1/jobs', { credentials: 'include' });
+        if (!res.ok) throw new Error('無法載入歷史紀錄');
+        const data = await res.json();
+        setJobs(data.jobs || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '載入失敗');
+      } finally {
+        setLoading(false);
+      }
+    }
     fetchJobs();
-  }, [fetchJobs]);
+  }, []);
 
   if (loading) {
     return (
