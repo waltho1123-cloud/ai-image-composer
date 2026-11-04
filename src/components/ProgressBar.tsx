@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface ProgressBarProps {
   jobId: string | null;
@@ -27,14 +27,28 @@ const STATUS_COLORS: Record<string, string> = {
 const MAX_RETRIES = 3;
 
 export default function ProgressBar({ jobId, onComplete, onError }: ProgressBarProps) {
-  const [status, setStatus] = useState<JobStatus>(null);
+  const [status, setStatus] = useState<JobStatus>(jobId ? 'queued' : null);
   const [progress, setProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const retryCountRef = useRef(0);
 
-  const connect = useCallback(
-    (id: string) => {
+  // jobId 改變時重設顯示狀態（排隊中、0%、無錯誤；沒有 jobId 則不顯示）。
+  // 在 render 階段比對前一個 jobId 再調整 state，而不是在 effect 裡同步 setState。
+  const [prevJobId, setPrevJobId] = useState(jobId);
+  if (prevJobId !== jobId) {
+    setPrevJobId(jobId);
+    setStatus(jobId ? 'queued' : null);
+    setProgress(0);
+    setErrorMsg(null);
+  }
+
+  useEffect(() => {
+    if (!jobId) return;
+
+    // connect 只在這個 effect 用到，宣告在 effect 內：函式宣告可以在內部遞迴呼叫自己（重連），
+    // 也不會有 useCallback 的 const 在初始化前就被自己參照的問題。
+    function connect(id: string) {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
@@ -97,28 +111,15 @@ export default function ProgressBar({ jobId, onComplete, onError }: ProgressBarP
           onError(msg);
         }
       });
-    },
-    [onComplete, onError]
-  );
-
-  useEffect(() => {
-    if (!jobId) {
-      setStatus(null);
-      setProgress(0);
-      setErrorMsg(null);
-      return;
     }
 
     retryCountRef.current = 0;
-    setStatus('queued');
-    setProgress(0);
-    setErrorMsg(null);
     connect(jobId);
 
     return () => {
       eventSourceRef.current?.close();
     };
-  }, [jobId, connect]);
+  }, [jobId, onComplete, onError]);
 
   if (!jobId || !status) return null;
 
